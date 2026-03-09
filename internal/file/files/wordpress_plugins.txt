@@ -9998,3 +9998,4 @@ woocommerce-product-generator
 restore-classic-editor
 referralcandy-for-woocommerce
 memberlite-elements
+canto
