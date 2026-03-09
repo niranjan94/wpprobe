@@ -100,6 +100,7 @@ var scanCmd = &cobra.Command{
 			Headers:        headers,
 			Proxy:          proxyURL,
 			RateLimit:      rateLimit,
+			PluginsOnly:    mustBool(cmd.Flags().GetBool("plugins-only")),
 		}
 
 		if opts.URL == "" && opts.File == "" {
@@ -126,6 +127,8 @@ func init() {
 	scanCmd.Flags().String("proxy", "", "HTTP/HTTPS proxy URL (e.g., http://127.0.0.1:8080)")
 	scanCmd.Flags().
 		Int("rate-limit", 0, "Maximum requests per second (0 = unlimited). Use to avoid overwhelming targets.")
+	scanCmd.Flags().
+		Bool("plugins-only", false, "Only list detected plugins without checking for vulnerabilities")
 }
 
 func mustBool(value bool, err error) bool {

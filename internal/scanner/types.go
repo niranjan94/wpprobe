@@ -45,6 +45,7 @@ type ScanOptions struct {
 	Proxy          string
 	RateLimit      int             // Requests per second (0 = unlimited)
 	MaxRedirects   int             // Maximum redirects to follow (0 = disable, -1 = default: 10)
+	PluginsOnly    bool            // Only list detected plugins, skip vulnerability checks
 	Context        context.Context // Context for cancellation
 	HTTPClient     *http.Client    // External HTTP client (optional, for connection pooling)
 }
@@ -133,12 +134,12 @@ type BruteforceRequest struct {
 
 // HybridScanRequest contains request parameters for hybrid scan operations.
 type HybridScanRequest struct {
-	Target           string
-	StealthyPlugins  []string
+	Target            string
+	StealthyPlugins   []string
 	BruteforcePlugins []string
-	Threads          int
-	Progress         *progress.ProgressManager
-	HTTP             wphttp.Config
+	Threads           int
+	Progress          *progress.ProgressManager
+	HTTP              wphttp.Config
 }
 
 // BruteforceContext contains context for bruteforce operations.
@@ -233,4 +234,3 @@ type DisplayResultsContext struct {
 	Opts      ScanOptions
 	Progress  *progress.ProgressManager
 }
-

@@ -94,11 +94,11 @@ func GetPluginVersionWithClient(ctx context.Context, client *http.HTTPClientMana
 // WordPress instances that return 200 for everything).
 func CheckPluginExists(ctx context.Context, client *http.HTTPClientManager, target, plugin string) bool {
 	url := target + "/wp-content/plugins/" + plugin + "/"
-	status, body, err := client.GetStatusAndBody(ctx, url)
+	status, _, err := client.GetStatusAndBody(ctx, url)
 	if err != nil {
 		return false
 	}
-	return status == 403 || (status == 200 && strings.Contains(strings.ToLower(body), "readme.txt"))
+	return status == 200 || status == 403
 }
 
 func fetchVersionFromReadme(ctx context.Context, client *http.HTTPClientManager, target, plugin string) string {

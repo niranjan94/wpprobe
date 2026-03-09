@@ -24,12 +24,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Chocapikk/wpprobe/internal/severity"
 	"github.com/Chocapikk/wpprobe/internal/file"
+	"github.com/Chocapikk/wpprobe/internal/severity"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/tree"
 )
-
 
 func buildPluginVulns(resultsList []file.PluginEntry) PluginVulnerabilities {
 	pluginVulns := PluginVulnerabilities{Plugins: make(map[string]VulnCategories)}
@@ -186,6 +185,68 @@ func DisplayResults(ctx DisplayResultsContext) {
 		}
 
 		root.Child(plNode)
+	}
+
+	showWarning := false
+	for _, pr := range ctx.PluginRes.Plugins {
+		if len(pr.Matches) > 0 {
+			showWarning = true
+			break
+		}
+	}
+	if showWarning {
+		root.Child(
+			tree.Root(
+				"⚠️ indicates that multiple plugins share common endpoints; only one of these is likely active.",
+			),
+		)
+	}
+
+	out := SeparatorStyle.Render(root.String())
+	if ctx.Progress != nil {
+		_, _ = ctx.Progress.Bprintln(out)
+	} else {
+		fmt.Println(out)
+	}
+}
+
+func DisplayPluginsOnly(ctx DisplayResultsContext) {
+	if isFileScan(ctx.Opts) && ctx.Opts.Output != "" {
+		return
+	}
+	if len(ctx.Detected) == 0 {
+		fmt.Println(NoVulnStyle.Render("No plugins detected for target: " + ctx.Target))
+		return
+	}
+
+	if ctx.Progress != nil {
+		ctx.Progress.RenderBlank()
+	}
+
+	summary := fmt.Sprintf("🔎 %s (%d plugins detected)",
+		URLStyle.Render(ctx.Target),
+		len(ctx.Detected),
+	)
+	root := tree.Root(TitleStyle.Render(summary))
+
+	plugins := make([]string, 0, len(ctx.Detected))
+	for p := range ctx.Detected {
+		plugins = append(plugins, p)
+	}
+	sort.Strings(plugins)
+
+	for _, plugin := range plugins {
+		version := ctx.Detected[plugin]
+		data := ctx.PluginRes.Plugins[plugin]
+		conf := data.Confidence
+		ambiguous := data.Ambiguous
+		label := formatPluginLabel(plugin, version, conf, ambiguous)
+
+		style := NoVulnStyle
+		if version == "unknown" {
+			style = NoVersionStyle
+		}
+		root.Child(style.Render(label))
 	}
 
 	showWarning := false

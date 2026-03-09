@@ -63,6 +63,9 @@ type Config struct {
 	// Skip version checking
 	NoCheckVersion bool
 
+	// Only detect plugins, skip vulnerability checks
+	PluginsOnly bool
+
 	// Context for cancellation
 	Context context.Context
 
@@ -206,10 +209,11 @@ func (s *Scanner) Scan(cfg Config) (*ScanResult, error) {
 		Proxy:          cfg.Proxy,
 		PluginList:     cfg.PluginList,
 		NoCheckVersion: cfg.NoCheckVersion,
+		PluginsOnly:    cfg.PluginsOnly,
 		MaxRedirects:   maxRedirects,
-		File:           "api",        // Set File to disable progress bar display
-		Verbose:        cfg.Verbose,  // Use Verbose from config (default: false)
-		Context:        cfg.Context,  // Propagate context for cancellation
+		File:           "api",          // Set File to disable progress bar display
+		Verbose:        cfg.Verbose,    // Use Verbose from config (default: false)
+		Context:        cfg.Context,    // Propagate context for cancellation
 		HTTPClient:     cfg.HTTPClient, // Use external HTTP client if provided
 	}
 
@@ -217,7 +221,10 @@ func (s *Scanner) Scan(cfg Config) (*ScanResult, error) {
 	defer writer.Close()
 
 	// Get vulnerabilities from global cache (no copy, just reference)
-	vulns := vulnerability.GetAllVulnerabilities()
+	var vulns []wordfence.Vulnerability
+	if !cfg.PluginsOnly {
+		vulns = vulnerability.GetAllVulnerabilities()
+	}
 
 	scanCtx := scanner.ScanSiteContext{
 		Target:   cfg.Target,
@@ -258,10 +265,10 @@ func (s *Scanner) buildResult(target string, entries []file.PluginEntry) *ScanRe
 		plugin, exists := pluginMap[entry.Plugin]
 		if !exists {
 			plugin = &PluginResult{
-				Name:           entry.Plugin,
-				Version:        entry.Version,
-				Confidence:     100.0,
-				Ambiguous:      false,
+				Name:       entry.Plugin,
+				Version:    entry.Version,
+				Confidence: 100.0,
+				Ambiguous:  false,
 				Vulnerabilities: VulnerabilitiesBySeverity{
 					Critical: make([]Vulnerability, 0),
 					High:     make([]Vulnerability, 0),
@@ -282,7 +289,7 @@ func (s *Scanner) buildResult(target string, entries []file.PluginEntry) *ScanRe
 		if cve == "" {
 			continue
 		}
-		
+
 		if seenCVEs[entry.Plugin][entry.Severity] == nil {
 			seenCVEs[entry.Plugin][entry.Severity] = make(map[string]bool)
 		}
@@ -350,10 +357,10 @@ func UpdateDatabases() error {
 	if err := wordfence.UpdateWordfence(); err != nil {
 		return err
 	}
-	
+
 	// WPScan update is optional - try it but don't fail if it errors
 	_ = wpscan.UpdateWPScan()
-	
+
 	return nil
 }
 
@@ -370,7 +377,6 @@ func (s *Scanner) Reload() error {
 	return nil
 }
 
-
 // DatabaseExists checks if the Wordfence vulnerability database file exists.
 func DatabaseExists() bool {
 	filePath, err := file.GetStoragePath("wordfence_vulnerabilities.json")
@@ -380,4 +386,3 @@ func DatabaseExists() bool {
 	_, err = os.Stat(filePath)
 	return err == nil
 }
-

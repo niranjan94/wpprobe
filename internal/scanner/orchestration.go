@@ -23,8 +23,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Chocapikk/wpprobe/internal/file"
 	"github.com/Chocapikk/wpprobe/internal/logger"
 	"github.com/Chocapikk/wpprobe/internal/vulnerability"
+	"github.com/Chocapikk/wpprobe/internal/wordfence"
 )
 
 func ScanTargets(opts ScanOptions) {
@@ -36,7 +38,10 @@ func ScanTargets(opts ScanOptions) {
 		return
 	}
 
-	vulns, _ := vulnerability.LoadWordfenceVulnerabilities()
+	var vulns []wordfence.Vulnerability
+	if !opts.PluginsOnly {
+		vulns, _ = vulnerability.LoadWordfenceVulnerabilities()
+	}
 	config := buildScanConfig(opts, len(targets))
 	progress := createProgressManager(opts, len(targets))
 	writer := createWriter(opts)
@@ -128,6 +133,39 @@ func ScanSite(ctx ScanSiteContext) {
 
 	if len(detected) == 0 {
 		handleNoPluginsDetected(ctx)
+		return
+	}
+
+	if ctx.Opts.PluginsOnly {
+		clearProgressLine(ctx.Progress, isFileScan(ctx.Opts))
+		detectedMap := make(map[string]string)
+		for _, p := range detected {
+			if versions != nil {
+				if v, ok := versions[p]; ok {
+					detectedMap[p] = v
+					continue
+				}
+			}
+			detectedMap[p] = "unknown"
+		}
+
+		var entries []file.PluginEntry
+		for plugin, version := range detectedMap {
+			entries = append(entries, file.PluginEntry{
+				Plugin:  plugin,
+				Version: version,
+			})
+		}
+		writeResults(ctx.Writer, ctx.Target, entries)
+
+		displayCtx := DisplayResultsContext{
+			Target:    ctx.Target,
+			Detected:  detectedMap,
+			PluginRes: result,
+			Opts:      ctx.Opts,
+			Progress:  ctx.Progress,
+		}
+		DisplayPluginsOnly(displayCtx)
 		return
 	}
 
