@@ -79,7 +79,7 @@ func UpdateWPScan() error {
 	logger.DefaultLogger.Error("WPScan database update is only available with Enterprise plan.")
 	logger.DefaultLogger.Error("Enterprise plan allows downloading complete database exports (10000+ plugins) in a single request.")
 	logger.DefaultLogger.Warning("Skipping WPScan update. Upgrade to Enterprise plan for WPScan support.")
-	logger.DefaultLogger.Info("You can still use Wordfence database (free and unlimited).")
+	logger.DefaultLogger.Info("You can still use Wordfence database (free, requires WORDFENCE_API_TOKEN).")
 	return nil
 }
 
@@ -299,4 +299,3 @@ func extractCVSS(vulnMap map[string]interface{}) (float64, string) {
 	}
 	return cvssScore, cvssVector
 }
-

@@ -75,7 +75,8 @@ docker run -it --rm \
 # Update databases
 docker run -it --rm \
   -v wpprobe-config:/config \
-  -e WPSCAN_API_TOKEN=your_token \
+  -e WORDFENCE_API_TOKEN=your_wordfence_token \
+  -e WPSCAN_API_TOKEN=your_wpscan_token \
   wpprobe update-db
 ```
 
@@ -107,7 +108,8 @@ wpprobe scan -u https://example.com -o results.json
 ### Vulnerability Database
 
 ```sh
-# Update databases (Wordfence is free, WPScan requires Enterprise API token)
+# Update databases (both require API tokens, Wordfence is free)
+export WORDFENCE_API_TOKEN=your-wordfence-token  # Free: https://www.wordfence.com
 wpprobe update-db
 
 # Search vulnerabilities
@@ -121,7 +123,7 @@ wpprobe search --title "SQL Injection" --details
 wpprobe list
 ```
 
-Set `WPSCAN_API_TOKEN` for WPScan database updates (Enterprise plan only). Wordfence database is free and unlimited.
+Set `WORDFENCE_API_TOKEN` for Wordfence database updates (free, register at wordfence.com). Set `WPSCAN_API_TOKEN` for WPScan database updates (Enterprise plan only).
 
 ### Self-Update
 
@@ -190,6 +192,7 @@ http://example.com,give,2.20.1,critical,Unauth,CVE-2025-22777,https://www.cve.or
 
 | Variable | Description |
 |----------|-------------|
+| `WORDFENCE_API_TOKEN` | Wordfence Intelligence API token (free, required for database updates) |
 | `WPSCAN_API_TOKEN` | WPScan Enterprise API token for database updates |
 | `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` | Proxy configuration |
 | `NO_PROXY` | Proxy bypass rules |

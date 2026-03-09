@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	nethttp "net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -30,15 +31,24 @@ import (
 	"github.com/Chocapikk/wpprobe/internal/vulnerability"
 )
 
-const wordfenceAPI = "https://www.wordfence.com/api/intelligence/v2/vulnerabilities/production"
+const wordfenceAPI = "https://www.wordfence.com/api/intelligence/v3/vulnerabilities/production"
 
 // Vulnerability is an alias for the common vulnerability type.
 type Vulnerability = vulnerability.Vulnerability
 
 func UpdateWordfence() error {
+	apiToken := getWordfenceAPIToken()
+	if apiToken == "" {
+		logger.DefaultLogger.Error("WORDFENCE_API_TOKEN not set.")
+		logger.DefaultLogger.Info("The Wordfence Intelligence API v3 requires a free API token.")
+		logger.DefaultLogger.Info("Register at https://www.wordfence.com and generate a token in the Integrations dashboard.")
+		logger.DefaultLogger.Info("Then set: export WORDFENCE_API_TOKEN=your-token")
+		return fmt.Errorf("WORDFENCE_API_TOKEN environment variable is required")
+	}
+
 	logger.DefaultLogger.Info("Fetching Wordfence data...")
 
-	data, err := fetchWordfenceData()
+	data, err := fetchWordfenceData(apiToken)
 	if err != nil {
 		handleFetchError(err)
 		return err
@@ -57,9 +67,19 @@ func UpdateWordfence() error {
 	return nil
 }
 
-func fetchWordfenceData() (map[string]interface{}, error) {
-	client := &nethttp.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(wordfenceAPI)
+func getWordfenceAPIToken() string {
+	return os.Getenv("WORDFENCE_API_TOKEN")
+}
+
+func fetchWordfenceData(apiToken string) (map[string]interface{}, error) {
+	req, err := nethttp.NewRequest("GET", wordfenceAPI, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+
+	client := &nethttp.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -74,6 +94,12 @@ func fetchWordfenceData() (map[string]interface{}, error) {
 		}
 		logger.DefaultLogger.Success("Successfully retrieved and processed Wordfence data.")
 		return data, nil
+
+	case nethttp.StatusUnauthorized, nethttp.StatusForbidden:
+		return nil, fmt.Errorf(
+			"authentication failed (%d). Check your WORDFENCE_API_TOKEN",
+			resp.StatusCode,
+		)
 
 	case nethttp.StatusTooManyRequests:
 		retryAfter := resp.Header.Get("Retry-After")
@@ -93,6 +119,8 @@ func fetchWordfenceData() (map[string]interface{}, error) {
 
 func handleFetchError(err error) {
 	switch {
+	case strings.Contains(err.Error(), "authentication failed"):
+		logger.DefaultLogger.Error("Wordfence API authentication failed. Verify your WORDFENCE_API_TOKEN.")
 	case strings.Contains(err.Error(), "429"):
 		logger.DefaultLogger.Warning(
 			"Wordfence API rate limit hit (429). Please wait before retrying.",

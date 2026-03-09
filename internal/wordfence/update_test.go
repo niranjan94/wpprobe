@@ -30,6 +30,10 @@ import (
 )
 
 func TestUpdateWordfence(t *testing.T) {
+	if os.Getenv("WORDFENCE_API_TOKEN") == "" {
+		t.Skip("WORDFENCE_API_TOKEN not set, skipping integration test")
+	}
+
 	err := UpdateWordfence()
 	if err != nil {
 		t.Errorf("UpdateWordfence() returned error: %v", err)
